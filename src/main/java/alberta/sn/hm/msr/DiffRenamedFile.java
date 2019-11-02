@@ -1,7 +1,5 @@
 package alberta.sn.hm.msr;
 
-import com.github.stkent.githubdiffparser.GitHubDiffParser;
-import com.github.stkent.githubdiffparser.models.Diff;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
@@ -12,10 +10,14 @@ import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.filter.PathFilter;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -36,20 +38,22 @@ public class DiffRenamedFile {
                 while (iterator.hasNext()) {
                     RevCommit commit = iterator.next();
                     List<DiffEntry> diffEntries = runDiff(repository, commit);
+
                     if (!diffEntries.isEmpty()) {
                         String diffFileName = "temp/" + commit.getId().getName() + ".diff";
                         new File(diffFileName).createNewFile();
                         for (DiffEntry diffEntry : diffEntries) {
                             System.out.println("Output record: " + commit.getId().getName() + ", " + diffEntry.getNewPath() + ", ");
+                            showFileContent(repository, commit, diffEntry.getNewPath());
                             try (DiffFormatter formatter = new DiffFormatter(new FileOutputStream(diffFileName, true))) {
                                 formatter.setRepository(repository);
                                 formatter.format(diffEntry);
                             }
                         }
-                        GitHubDiffParser parser = new GitHubDiffParser();
+                        /*GitHubDiffParser parser = new GitHubDiffParser();
                         InputStream in = new FileInputStream(diffFileName);
                         List<Diff> diff = parser.parse(in);
-                        System.out.println();
+                        System.out.println();*/
                     }
                 }
             }
@@ -65,12 +69,10 @@ public class DiffRenamedFile {
         ObjectId head = commit.getTree().toObjectId();
         if (commit.getParentCount() == 0)
             return Collections.EMPTY_LIST;
-        //TODO supposed that there is only one parent
         ObjectId oldHead = commit.getParent(0).getTree().toObjectId();
 
-        showFileContent(repository, commit);
-
-        System.out.println("Printing diff between " + oldHead + " and " + head);
+        System.out.println();
+        System.out.println("Printing diff between old: " + commit.getParent(0).getId().getName() + " and new: " + commit.getId().getName());
 
         try (Git git = new Git(repository)) {
             try (ObjectReader reader = repository.newObjectReader()) {
@@ -84,30 +86,26 @@ public class DiffRenamedFile {
         }
     }
 
-    private static void showFileContent(Repository repository, RevTree tree) throws IOException {
-        System.out.println("******************************" + tree.getName() + "******************************");
-        // now try to find a specific file
+    private static void showFileContent(Repository repository, RevTree tree, String path) throws IOException {
         try (TreeWalk treeWalk = new TreeWalk(repository)) {
             treeWalk.addTree(tree);
             treeWalk.setRecursive(true);
-            //treeWalk.setFilter(PathFilter.create("README.md"));
-            if (!treeWalk.next()) {
-                throw new IllegalStateException("Did not find expected file 'README.md'");
+            treeWalk.setFilter(PathFilter.create(path));
+            while (treeWalk.next()) {
+                System.out.println("found: " + treeWalk.getNameString());
+                ObjectId objectId = treeWalk.getObjectId(0);
+                ObjectLoader loader = repository.open(objectId);
+                // and then one can the loader to read the file
+                loader.copyTo(System.out);
             }
-            ObjectId objectId = treeWalk.getObjectId(0);
-            ObjectLoader loader = repository.open(objectId);
-            // and then one can the loader to read the file
-            loader.copyTo(System.out);
         }
-        System.out.println();
     }
 
-    private static void showFileContent(Repository repository, RevCommit commit) throws IOException {
+    private static void showFileContent(Repository repository, RevCommit commit, String path) throws IOException {
         System.out.println("############################" + commit.getId().getName() + "############################");
-        if (commit.getParentCount() != 0) {
-            showFileContent(repository, commit.getTree());
-            showFileContent(repository, commit.getParent(0).getTree());
-        }
+        showFileContent(repository, commit.getTree(), path);
+        System.out.println("#####" + commit.getId().getName() + "#####");
+        showFileContent(repository, commit.getParent(0).getTree(), path);
         System.out.println("############################" + commit.getId().getName() + "############################");
     }
 

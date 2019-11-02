@@ -20,13 +20,13 @@ public class GitMsrApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        /*Git git = Git.cloneRepository()
+        Git git = Git.cloneRepository()
                 .setURI("https://github.com/hamedmirzaei/test-msr2.git")
                 .setDirectory(new File("data"))
                 .setCloneAllBranches(true)
-                .call();*/
+                .call();
 
-        try (Repository repository = openJGitCookbookRepository()) {
+        /*try (Repository repository = openJGitCookbookRepository()) {
             try (Git git = new Git(repository)) {
                 Iterable<RevCommit> commits = git.log().all().call();
 
@@ -36,7 +36,7 @@ public class GitMsrApplication implements CommandLineRunner {
                     System.out.println("LogCommit: " + commit);
                 }
             }
-        }
+        }*/
     }
 
     public static Repository openJGitCookbookRepository() throws IOException {
