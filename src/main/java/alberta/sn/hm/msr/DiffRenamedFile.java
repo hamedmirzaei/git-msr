@@ -86,26 +86,30 @@ public class DiffRenamedFile {
         }
     }
 
-    private static void showFileContent(Repository repository, RevTree tree, String path) throws IOException {
+    private static void showFileContent(Repository repository, RevTree tree, String fileFullPath, Boolean newFile) throws IOException {
         try (TreeWalk treeWalk = new TreeWalk(repository)) {
             treeWalk.addTree(tree);
             treeWalk.setRecursive(true);
-            treeWalk.setFilter(PathFilter.create(path));
+            treeWalk.setFilter(PathFilter.create(fileFullPath));
             while (treeWalk.next()) {
                 System.out.println("found: " + treeWalk.getNameString());
                 ObjectId objectId = treeWalk.getObjectId(0);
                 ObjectLoader loader = repository.open(objectId);
                 // and then one can the loader to read the file
-                loader.copyTo(System.out);
+                String fileName = fileFullPath.substring(fileFullPath.lastIndexOf('/') + 1);
+                if (newFile)
+                    loader.copyTo(new FileOutputStream("temp/new_" + fileName));
+                else
+                    loader.copyTo(new FileOutputStream("temp/old_" + fileName));
             }
         }
     }
 
     private static void showFileContent(Repository repository, RevCommit commit, String path) throws IOException {
         System.out.println("############################" + commit.getId().getName() + "############################");
-        showFileContent(repository, commit.getTree(), path);
+        showFileContent(repository, commit.getTree(), path, true);
         System.out.println("#####" + commit.getId().getName() + "#####");
-        showFileContent(repository, commit.getParent(0).getTree(), path);
+        showFileContent(repository, commit.getParent(0).getTree(), path, false);
         System.out.println("############################" + commit.getId().getName() + "############################");
     }
 
