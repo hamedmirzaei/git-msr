@@ -1,16 +1,8 @@
 package alberta.sn.hm.msr;
 
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevTree;
-import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -29,7 +21,7 @@ public class GitMsrApplication implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         /*Git git = Git.cloneRepository()
-                .setURI("https://github.com/hamedmirzaei/test-msr.git")
+                .setURI("https://github.com/hamedmirzaei/test-msr2.git")
                 .setDirectory(new File("data"))
                 .setCloneAllBranches(true)
                 .call();*/
@@ -41,9 +33,7 @@ public class GitMsrApplication implements CommandLineRunner {
                 Iterator<RevCommit> iterator = commits.iterator();
                 while (iterator.hasNext()) {
                     RevCommit commit = iterator.next();
-                    if (iterator.hasNext()) {
-                        System.out.println("LogCommit: " + commit);
-                    }
+                    System.out.println("LogCommit: " + commit);
                 }
             }
         }

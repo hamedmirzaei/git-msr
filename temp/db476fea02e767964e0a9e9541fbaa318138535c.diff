@@ -1,0 +1,14 @@
+diff --git a/src/main/java/SecondFile.java b/src/main/java/SecondFile.java
+index c544446..ba96a2f 100644
+--- a/src/main/java/SecondFile.java
++++ b/src/main/java/SecondFile.java
+@@ -10,7 +10,7 @@
+ 		return "Hello World!";
+ 	}
+ 	
+-	public void method22(Integer input1) {
++	public void method22(String input1) {
+ 		System.out.println(input1);
+ 	}
+ }
+\ No newline at end of file

@@ -1,107 +1,117 @@
 package alberta.sn.hm.msr;
 
-import org.eclipse.jgit.annotations.NonNull;
+import com.github.stkent.githubdiffparser.GitHubDiffParser;
+import com.github.stkent.githubdiffparser.models.Diff;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.diff.DiffConfig;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
-import org.eclipse.jgit.lib.Config;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.FollowFilter;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
-import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.TreeWalk;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
 public class DiffRenamedFile {
-    public static void main(String[] args)
-            throws IOException, GitAPIException {
-        try (Repository repo = openJGitCookbookRepository()) {
-            try (Git git = new Git(repo)) {
+    public static void main(String[] args) throws IOException, GitAPIException {
+        recreateTempFolder();
+        try (Repository repository = openRepository()) {
+            try (Git git = new Git(repository)) {
                 Iterable<RevCommit> commits = git.log().all().call();
                 // the first is the latest
+                // for each commit except the first one, run diff of current commit with its parent
                 Iterator<RevCommit> iterator = commits.iterator();
                 while (iterator.hasNext()) {
                     RevCommit commit = iterator.next();
-                    if (iterator.hasNext()) {
-                        System.out.println("LogCommit: " + commit);
-                        runDiff(repo,
-                                commit.getId().getName() + "^",
-                                commit.getId().getName(),
-                                "src/main/java/GitMsrApplication.java");
+                    List<DiffEntry> diffEntries = runDiff(repository, commit);
+                    if (!diffEntries.isEmpty()) {
+                        String diffFileName = "temp/" + commit.getId().getName() + ".diff";
+                        new File(diffFileName).createNewFile();
+                        for (DiffEntry diffEntry : diffEntries) {
+                            System.out.println("Output record: " + commit.getId().getName() + ", " + diffEntry.getNewPath() + ", ");
+                            try (DiffFormatter formatter = new DiffFormatter(new FileOutputStream(diffFileName, true))) {
+                                formatter.setRepository(repository);
+                                formatter.format(diffEntry);
+                            }
+                        }
+                        GitHubDiffParser parser = new GitHubDiffParser();
+                        InputStream in = new FileInputStream(diffFileName);
+                        List<Diff> diff = parser.parse(in);
+                        System.out.println();
                     }
                 }
             }
         }
     }
 
-    private static void runDiff(Repository repo, String oldCommit, String newCommit, String path) throws IOException, GitAPIException {
-        // Diff README.md between two commits. The file is named README.md in
-        // the new commit (5a10bd6e), but was named "jgit-cookbook README.md" in
-        // the old commit (2e1d65e4).
-        DiffEntry diff = diffFile(repo,
-                oldCommit,
-                newCommit,
-                path);
-
-        if (diff != null) {
-            // Display the diff
-            System.out.println("Showing diff of " + path + " between " + oldCommit + " and " + newCommit);
-            try (DiffFormatter formatter = new DiffFormatter(System.out)) {
-                formatter.setRepository(repo);
-                //noinspection ConstantConditions
-                formatter.format(diff);
-            }
-        }
+    private static void recreateTempFolder() throws IOException {
+        Files.walk(Paths.get("temp")).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+        new File("temp").mkdir();
     }
 
-    private static AbstractTreeIterator prepareTreeParser(Repository repository, String objectId) throws IOException {
-        // from the commit we can build the tree which allows us to construct the TreeParser
-        //noinspection Duplicates
-        try (RevWalk walk = new RevWalk(repository)) {
-            RevCommit commit = walk.parseCommit(repository.resolve(objectId));
-            RevTree tree = walk.parseTree(commit.getTree().getId());
+    private static List<DiffEntry> runDiff(Repository repository, RevCommit commit) throws IOException, GitAPIException {
+        ObjectId head = commit.getTree().toObjectId();
+        if (commit.getParentCount() == 0)
+            return Collections.EMPTY_LIST;
+        //TODO supposed that there is only one parent
+        ObjectId oldHead = commit.getParent(0).getTree().toObjectId();
 
-            CanonicalTreeParser treeParser = new CanonicalTreeParser();
+        showFileContent(repository, commit);
+
+        System.out.println("Printing diff between " + oldHead + " and " + head);
+
+        try (Git git = new Git(repository)) {
             try (ObjectReader reader = repository.newObjectReader()) {
-                treeParser.reset(reader, tree.getId());
+                CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
+                newTreeIter.reset(reader, head);
+                CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
+                oldTreeIter.reset(reader, oldHead);
+                // finally get the list of changed files
+                return git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
             }
-
-            walk.dispose();
-
-            return treeParser;
         }
     }
 
-    private static @NonNull
-    DiffEntry diffFile(Repository repo, String oldCommit,
-                       String newCommit, String path) throws IOException, GitAPIException {
-        Config config = new Config();
-        config.setBoolean("diff", null, "renames", true);
-        DiffConfig diffConfig = config.get(DiffConfig.KEY);
-        try (Git git = new Git(repo)) {
-            List<DiffEntry> diffList = git.diff().
-                    setOldTree(prepareTreeParser(repo, oldCommit)).
-                    setNewTree(prepareTreeParser(repo, newCommit)).
-                    setPathFilter(FollowFilter.create(path, diffConfig)).
-                    call();
-            if (diffList.size() == 0)
-                return null;
-            if (diffList.size() > 1)
-                throw new RuntimeException("invalid diff");
-            return diffList.get(0);
+    private static void showFileContent(Repository repository, RevTree tree) throws IOException {
+        System.out.println("******************************" + tree.getName() + "******************************");
+        // now try to find a specific file
+        try (TreeWalk treeWalk = new TreeWalk(repository)) {
+            treeWalk.addTree(tree);
+            treeWalk.setRecursive(true);
+            //treeWalk.setFilter(PathFilter.create("README.md"));
+            if (!treeWalk.next()) {
+                throw new IllegalStateException("Did not find expected file 'README.md'");
+            }
+            ObjectId objectId = treeWalk.getObjectId(0);
+            ObjectLoader loader = repository.open(objectId);
+            // and then one can the loader to read the file
+            loader.copyTo(System.out);
         }
+        System.out.println();
     }
 
-    public static Repository openJGitCookbookRepository() throws IOException {
+    private static void showFileContent(Repository repository, RevCommit commit) throws IOException {
+        System.out.println("############################" + commit.getId().getName() + "############################");
+        if (commit.getParentCount() != 0) {
+            showFileContent(repository, commit.getTree());
+            showFileContent(repository, commit.getParent(0).getTree());
+        }
+        System.out.println("############################" + commit.getId().getName() + "############################");
+    }
+
+    public static Repository openRepository() throws IOException {
         return Git.open(new File("data")).getRepository();
     }
 }
