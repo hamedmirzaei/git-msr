@@ -3,6 +3,7 @@ package alberta.sn.hm.msr;
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -14,10 +15,11 @@ import java.util.List;
 
 public class JavaFileDetails {
 
-    String fileName;
-    List<ClassPair> classes = new ArrayList<>();
-    List<ConstructorDeclaration> constructors = new ArrayList<>();
-    List<MethodDeclaration> methods = new ArrayList<>();
+    private String fileName;
+    private List<ClassPair> classes = new ArrayList<>();
+    private List<ConstructorDeclaration> constructors = new ArrayList<>();
+    private List<MethodDeclaration> methods = new ArrayList<>();
+    private List<CallableDeclaration> callables = new ArrayList<>();
 
     public JavaFileDetails(String fileName) {
         this.fileName = fileName;
@@ -26,6 +28,8 @@ public class JavaFileDetails {
             this.constructors.addAll(getChildNodesNotInClass(c.clazz, ConstructorDeclaration.class));
             this.methods.addAll(getChildNodesNotInClass(c.clazz, MethodDeclaration.class));
         }
+        this.callables.addAll(this.methods);
+        this.callables.addAll(this.constructors);
     }
 
     class ClassPair {
@@ -86,11 +90,7 @@ public class JavaFileDetails {
         }
     }
 
-    public List<ConstructorDeclaration> getConstructors() {
-        return constructors;
-    }
-
-    public List<MethodDeclaration> getMethods() {
-        return methods;
+    public List<CallableDeclaration> getCallables() {
+        return callables;
     }
 }

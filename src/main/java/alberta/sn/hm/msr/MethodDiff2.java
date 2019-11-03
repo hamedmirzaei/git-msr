@@ -1,5 +1,6 @@
 package alberta.sn.hm.msr;
 
+import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 
@@ -14,29 +15,64 @@ public class MethodDiff2 {
         JavaFileDetails oldFileDetails = new JavaFileDetails(oldFileNameWithPath);
         JavaFileDetails newFileDetails = new JavaFileDetails(newFileNameWithPath);
 
-        List<MethodDeclaration> newNotExistMethods = minus(newFileDetails.methods, oldFileDetails.methods);
-        List<MethodDeclaration> oldNotExistMethods = minus(oldFileDetails.methods, newFileDetails.methods);
+        List<CallableDeclaration> newNotExistMethods = minus(newFileDetails.getCallables(), oldFileDetails.getCallables());
+        List<CallableDeclaration> oldNotExistMethods = minus(oldFileDetails.getCallables(), newFileDetails.getCallables());
 
 
-        for (MethodDeclaration newNotExistMethod : newNotExistMethods) {
-            for (MethodDeclaration oldNotExistMethod : oldNotExistMethods) {
+        boolean exist;
+        for (CallableDeclaration newNotExistMethod : newNotExistMethods) {
+            exist = false;
+            for (CallableDeclaration oldNotExistMethod : oldNotExistMethods) {
                 // if name is equal
                 if (methodsAreEqualInNameNotParams(newNotExistMethod, oldNotExistMethod)) {
-                    System.out.println("From " + oldNotExistMethod.getSignature().asString() +
-                            " To " + newNotExistMethod.getSignature().asString());
+                    exist = true;
+                    if (newNotExistMethod instanceof MethodDeclaration && oldNotExistMethod instanceof MethodDeclaration) {
+                        System.out.println("CHANGED: From " + ((MethodDeclaration) oldNotExistMethod).getType().asString()
+                                + " " + oldNotExistMethod.getSignature().asString() +
+                                " To " + ((MethodDeclaration) newNotExistMethod).getType().asString()
+                                + " " + newNotExistMethod.getSignature().asString());
+                    } else {
+                        System.out.println("CHANGED: From " + oldNotExistMethod.getSignature().asString() +
+                                " To " + newNotExistMethod.getSignature().asString());
+                    }
+                }
+            }
+            if (!exist) {
+                if (newNotExistMethod instanceof MethodDeclaration) {
+                    System.out.println("ADDED: " + ((MethodDeclaration) newNotExistMethod).getType().asString()
+                            + " " + newNotExistMethod.getSignature().asString());
+                } else {
+                    System.out.println("ADDED: " + newNotExistMethod.getSignature().asString());
                 }
             }
         }
 
+        for (CallableDeclaration oldNotExistMethod : oldNotExistMethods) {
+            exist = false;
+            for (CallableDeclaration newNotExistMethod : newNotExistMethods) {
+                if (methodsAreEqualInNameNotParams(oldNotExistMethod, newNotExistMethod)) {
+                    exist = true;
+                }
+            }
+            if (!exist) {
+                if (oldNotExistMethod instanceof MethodDeclaration) {
+                    System.out.println("REMOVED: " + ((MethodDeclaration) oldNotExistMethod).getType().asString()
+                            + " " + oldNotExistMethod.getSignature().asString());
+                } else {
+                    System.out.println("ADDED: " + oldNotExistMethod.getSignature().asString());
+                }
+            }
+        }
 
         return null;
     }
 
-    private List<MethodDeclaration> minus(List<MethodDeclaration> a, List<MethodDeclaration> b) {
-        List<MethodDeclaration> result = new ArrayList<>();
-        for (MethodDeclaration method1 : a) {
-            boolean exist = false;
-            for (MethodDeclaration method2 : b) {
+    private List<CallableDeclaration> minus(List<CallableDeclaration> a, List<CallableDeclaration> b) {
+        List<CallableDeclaration> result = new ArrayList<>();
+        boolean exist;
+        for (CallableDeclaration method1 : a) {
+            exist = false;
+            for (CallableDeclaration method2 : b) {
                 // if all is equal
                 if (methodsAreEqualInSignature(method1, method2)) {
                     exist = true;
@@ -49,11 +85,12 @@ public class MethodDiff2 {
         return result;
     }
 
-    private Boolean methodsAreEqualInSignature(MethodDeclaration method1, MethodDeclaration method2) {
+    private Boolean methodsAreEqualInSignature(CallableDeclaration method1, CallableDeclaration method2) {
         // is return type is equal
-        if (!method1.getType().asString().equals(method2.getType().asString())) {
-            return false;
-        }
+        if (method1 instanceof MethodDeclaration && method2 instanceof MethodDeclaration)
+            if (!((MethodDeclaration) method1).getType().asString().equals(((MethodDeclaration) method2).getType().asString())) {
+                return false;
+            }
         // if name is equal
         if (!method1.getNameAsString().equals(method2.getNameAsString())) {
             return false;
@@ -73,7 +110,7 @@ public class MethodDiff2 {
         return false;
     }
 
-    private Boolean methodsAreEqualInNameNotParams(MethodDeclaration method1, MethodDeclaration method2) {
+    private Boolean methodsAreEqualInNameNotParams(CallableDeclaration method1, CallableDeclaration method2) {
         // if name is equal
         if (!method1.getNameAsString().equals(method2.getNameAsString())) {
             return false;
@@ -91,6 +128,8 @@ public class MethodDiff2 {
             }
             if (allEqual)
                 return false;
+        } else {
+            return true;
         }
         return true;
     }

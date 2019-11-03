@@ -1,0 +1,14 @@
+diff --git a/src/main/java/FirstFile.java b/src/main/java/FirstFile.java
+index d82ced2..f0b5ac6 100644
+--- a/src/main/java/FirstFile.java
++++ b/src/main/java/FirstFile.java
+@@ -18,8 +18,4 @@
+ 		System.out.println(input1);
+ 		return input1 * input2;
+ 	}
+-	
+-	public void method13() {
+-		System.out.println("To be deleted");
+-	}
+ }
+\ No newline at end of file
