@@ -1,0 +1,52 @@
+1. all methods, including added, removed and changed are detected
+    - add means exist in new commit but not old one
+    - remove means exist in old commit and removed in the new one
+    - change means exist in both new and old commits
+
+
+2. method's parameters' names are not important, so the following change is not of interest:
+old file:
+    void method1(int x)
+new file:
+    void method1(int y)
+result contains no record
+
+
+3. types of parameters are important since they are part of signature:
+old file:
+    void method1(int x)
+new file:
+    void method1(string s)
+result contains one record:
+    method1     changed    to    void method1(string s)
+
+
+4. because of method overloading, we may anticipate multiple changes for a single method.
+old file:
+    void method1(int x)
+new file:
+    void method1(int x, int y)
+    void method1(int x, string s)
+result contains two records:
+    method1     changed    to    void method1(int x, int y)
+    method1     changed    to    void method1(int x, string s)
+
+
+5. in java each class can have multiple constructors. we treat them just like methods
+
+
+6. since in git all files are treated as plain text and because in java, methods can be broken into multiple lines,
+   in order to have complete signature of methods, we build changed java files for each commit (notice that just the
+   CHANGED files with JAVA extension will be built - for example txt files will be excluded)
+
+
+7. since columns in csv files are separated by comma "," and because in java, method parameters are separated by comma
+   too, we replace java parameter separator to semi colon ";"
+
+
+8. since we build each java file and parse it, the files with compilation error like forgetting to put "class" identifier
+   will be excluded from results
+
+
+9. Some files may be deleted or added in a commit, since the file does not exist anymore in either old or new commit,
+   they will be excluded from the results

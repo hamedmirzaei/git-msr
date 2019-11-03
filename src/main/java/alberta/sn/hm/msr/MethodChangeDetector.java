@@ -13,6 +13,8 @@ import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
+import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
+import org.eclipse.jgit.treewalk.filter.TreeFilter;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,9 +22,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 
-public class DiffRenamedFile {
+public class MethodChangeDetector {
+
+    private static CsvWriter csvWriter = new CsvWriter();
 
     public static void main(String[] args) throws IOException, GitAPIException {
         System.out.println("Application started");
@@ -56,6 +63,7 @@ public class DiffRenamedFile {
                 }
             }
         }
+        csvWriter.close();
     }
 
     private static List<DiffEntry> runDiff(Repository repository, RevCommit commit) throws IOException, GitAPIException {
@@ -75,7 +83,8 @@ public class DiffRenamedFile {
                 CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
                 oldTreeIter.reset(reader, oldHead);
                 // finally get the list of changed files
-                return git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
+                TreeFilter filter = PathSuffixFilter.create(".java");
+                return git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).setPathFilter(filter).call();
             }
         }
     }
@@ -86,14 +95,15 @@ public class DiffRenamedFile {
         System.out.println("Move content of diff entry for " + path + " to old file");
         moveDiffEntryToFile(repository, commit.getParent(0).getTree(), path, commit.getId().getName(), false);
 
-        MethodDiff2 methodDiff2 = new MethodDiff2();
-        methodDiff2.methodDiffInClass(
-                "temp/" + commit.getId().getName() + "/old/" + path,
-                "temp/" + commit.getId().getName() + "/new/" + path);
-        /*GitHubDiffParser parser = new GitHubDiffParser();
-                        InputStream in = new FileInputStream(diffFileName);
-                        List<Diff> diff = parser.parse(in);
-                        System.out.println();*/
+        MethodDiff methodDiff2 = new MethodDiff();
+        try {
+            methodDiff2.methodDiffInClass(
+                    "temp/" + commit.getId().getName() + "/old/" + path,
+                    "temp/" + commit.getId().getName() + "/new/" + path,
+                    csvWriter);
+        } catch (RuntimeException ex) {
+            System.out.println("Added/Deleted/CompiledError file detected for " + path);
+        }
     }
 
     private static void moveDiffEntryToFile(Repository repository, RevTree tree, String fileFullPath, String commitName, Boolean newFile) throws IOException {
