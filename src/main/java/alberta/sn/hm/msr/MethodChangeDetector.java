@@ -1,5 +1,6 @@
 package alberta.sn.hm.msr;
 
+import alberta.sn.hm.msr.exception.FileException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
@@ -30,10 +31,14 @@ import java.util.List;
 public class MethodChangeDetector {
 
     private static CsvWriter csvWriter = new CsvWriter();
+    private static String TEMP_FOLDER = "temp";
+    private static String NEW_FOLDER = "new";
+    private static String OLD_FOLDER = "old";
 
     public static void main(String[] args) throws IOException, GitAPIException {
         System.out.println("Application started");
         recreateTempFolder();
+
         try (Repository repository = openRepository()) {
             try (Git git = new Git(repository)) {
                 System.out.println("Get all commits");
@@ -44,29 +49,39 @@ public class MethodChangeDetector {
                 Iterator<RevCommit> iterator = commits.iterator();
                 while (iterator.hasNext()) {
                     RevCommit commit = iterator.next();
-                    System.out.println("\nProcessing commit " + commit.getId().getName());
-                    List<DiffEntry> diffEntries = runDiff(repository, commit);
-
-                    if (!diffEntries.isEmpty()) {
-                        System.out.println("There are #" + diffEntries.size() + " diff entries");
-                        String diffFileName = "temp/" + commit.getId().getName() + ".diff";
-                        new File(diffFileName).createNewFile();
-                        for (DiffEntry diffEntry : diffEntries) {
-                            System.out.println("Processing diff entry " + diffEntry.getNewPath());
-                            moveDiffEntryToFile(repository, commit, diffEntry.getNewPath());
-                            try (DiffFormatter formatter = new DiffFormatter(new FileOutputStream(diffFileName, true))) {
-                                formatter.setRepository(repository);
-                                formatter.format(diffEntry);
-                            }
-                        }
-                    }
+                    processCommit(repository, commit);
                 }
             }
         }
         csvWriter.close();
     }
 
-    private static List<DiffEntry> runDiff(Repository repository, RevCommit commit) throws IOException, GitAPIException {
+    private static void processCommit(Repository repository, RevCommit commit) throws IOException, GitAPIException {
+        String commitId = commit.getId().getName();
+        System.out.println("\nProcessing commit " + commitId);
+        List<DiffEntry> diffEntries = executeGitDiffCommand(repository, commit);
+        if (!diffEntries.isEmpty()) {
+            System.out.println("There are #" + diffEntries.size() + " diff entries");
+            String diffFileName = TEMP_FOLDER + "/" + commitId + ".diff";
+            new File(diffFileName).createNewFile();
+            for (DiffEntry diffEntry : diffEntries) {
+                System.out.println("Processing diff entry " + diffEntry.getNewPath());
+                generateOldNewFileForDiffEntry(repository, commit, diffEntry.getNewPath());
+                appendDiffEntryToDiffFile(repository, diffEntry, diffFileName);
+            }
+        } else {
+            System.out.println("There is no diff entry for commit " + commitId);
+        }
+    }
+
+    private static void appendDiffEntryToDiffFile(Repository repository, DiffEntry diffEntry, String diffFileName) throws IOException {
+        try (DiffFormatter formatter = new DiffFormatter(new FileOutputStream(diffFileName, true))) {
+            formatter.setRepository(repository);
+            formatter.format(diffEntry);
+        }
+    }
+
+    private static List<DiffEntry> executeGitDiffCommand(Repository repository, RevCommit commit) throws IOException, GitAPIException {
         System.out.println("Making diff of commit with its parent");
         ObjectId head = commit.getTree().toObjectId();
         if (commit.getParentCount() == 0) {
@@ -89,24 +104,25 @@ public class MethodChangeDetector {
         }
     }
 
-    private static void moveDiffEntryToFile(Repository repository, RevCommit commit, String path) throws IOException {
-        System.out.println("Move content of diff entry for " + path + " to new file");
-        moveDiffEntryToFile(repository, commit.getTree(), path, commit.getId().getName(), true);
-        System.out.println("Move content of diff entry for " + path + " to old file");
-        moveDiffEntryToFile(repository, commit.getParent(0).getTree(), path, commit.getId().getName(), false);
+    private static void generateOldNewFileForDiffEntry(Repository repository, RevCommit commit, String path) throws IOException {
+        System.out.println("Move content of diff entry for " + path + " to " + NEW_FOLDER + " folder");
+        String commitId = commit.getId().getName();
+        generateOldNewFileForDiffEntry(repository, commit.getTree(), path, commitId, true);
+        System.out.println("Move content of diff entry for " + path + " to " + OLD_FOLDER + " folder");
+        generateOldNewFileForDiffEntry(repository, commit.getParent(0).getTree(), path, commitId, false);
 
-        MethodDiff methodDiff2 = new MethodDiff();
+        MethodDiffGenerator methodDiffGenerator = new MethodDiffGenerator();
         try {
-            methodDiff2.methodDiffInClass(
-                    "temp/" + commit.getId().getName() + "/old/" + path,
-                    "temp/" + commit.getId().getName() + "/new/" + path,
+            methodDiffGenerator.makeAndWriteDiffToFile(
+                    TEMP_FOLDER + "/" + commitId + "/" + OLD_FOLDER + "/" + path,
+                    TEMP_FOLDER + "/" + commitId + "/" + NEW_FOLDER + "/" + path,
                     csvWriter);
-        } catch (RuntimeException ex) {
-            System.out.println("Added/Deleted/CompiledError file detected for " + path);
+        } catch (FileException.NotExistInOldCommit | FileException.NotExistInNewCommit | FileException.CompilationError e) {
+            System.out.println(e.getMessage());
         }
     }
 
-    private static void moveDiffEntryToFile(Repository repository, RevTree tree, String fileFullPath, String commitName, Boolean newFile) throws IOException {
+    private static void generateOldNewFileForDiffEntry(Repository repository, RevTree tree, String fileFullPath, String commitName, Boolean newFile) throws IOException {
         try (TreeWalk treeWalk = new TreeWalk(repository)) {
             treeWalk.addTree(tree);
             treeWalk.setRecursive(true);
@@ -120,13 +136,13 @@ public class MethodChangeDetector {
                 int lastSlashIndex = fileFullPath.lastIndexOf('/') + 1;
                 String fileName = fileFullPath.substring(lastSlashIndex);
                 String parents = fileFullPath.substring(0, lastSlashIndex);
-                String tempPlusCommit = "temp/" + commitName + "/";
+                String tempPlusCommit = TEMP_FOLDER + "/" + commitName;
                 if (newFile) {
-                    new File(tempPlusCommit + "new/" + parents).mkdirs();
-                    loader.copyTo(new FileOutputStream(tempPlusCommit + "new/" + parents + fileName));
+                    new File(tempPlusCommit + "/" + NEW_FOLDER + "/" + parents).mkdirs();
+                    loader.copyTo(new FileOutputStream(tempPlusCommit + "/" + NEW_FOLDER + "/" + parents + fileName));
                 } else {
-                    new File(tempPlusCommit + "old/" + parents).mkdirs();
-                    loader.copyTo(new FileOutputStream(tempPlusCommit + "old/" + parents + fileName));
+                    new File(tempPlusCommit + "/" + OLD_FOLDER + "/" + parents).mkdirs();
+                    loader.copyTo(new FileOutputStream(tempPlusCommit + "/" + OLD_FOLDER + "/" + parents + fileName));
                 }
             }
         }
@@ -138,7 +154,7 @@ public class MethodChangeDetector {
     }
 
     private static void recreateTempFolder() throws IOException {
-        Files.walk(Paths.get("temp")).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
-        new File("temp").mkdir();
+        Files.walk(Paths.get(TEMP_FOLDER)).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+        new File(TEMP_FOLDER).mkdir();
     }
 }

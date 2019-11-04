@@ -1,6 +1,7 @@
 package alberta.sn.hm.msr;
 
 import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.CallableDeclaration;
@@ -21,7 +22,7 @@ public class JavaFileDetails {
     private List<MethodDeclaration> methods = new ArrayList<>();
     private List<CallableDeclaration> callables = new ArrayList<>();
 
-    public JavaFileDetails(String fileName) {
+    public JavaFileDetails(String fileName) throws FileNotFoundException {
         this.fileName = fileName;
         this.classes = getClasses(fileName);
         for (ClassPair c : this.classes) {
@@ -81,13 +82,9 @@ public class JavaFileDetails {
         return pairList;
     }
 
-    private List<ClassPair> getClasses(String file) {
-        try {
-            CompilationUnit cu = JavaParser.parse(new File(file));
-            return getClasses(cu, "", false);
-        } catch (FileNotFoundException f) {
-            throw new RuntimeException("EXCEPTION: Could not find file: " + file);
-        }
+    private List<ClassPair> getClasses(String file) throws FileNotFoundException, ParseProblemException {
+        CompilationUnit cu = JavaParser.parse(new File(file));
+        return getClasses(cu, "", false);
     }
 
     public List<CallableDeclaration> getCallables() {

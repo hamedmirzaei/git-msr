@@ -1,33 +1,51 @@
 package alberta.sn.hm.msr;
 
+import alberta.sn.hm.msr.exception.FileException;
+import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-public class MethodDiff {
+public class MethodDiffGenerator {
 
 
-    public HashSet<String> methodDiffInClass(String oldFileNameWithPath, String newFileNameWithPath, CsvWriter csvWriter) {
-        JavaFileDetails newFileDetails = new JavaFileDetails(newFileNameWithPath);
-        JavaFileDetails oldFileDetails = new JavaFileDetails(oldFileNameWithPath);
-
-
+    public HashSet<String> makeAndWriteDiffToFile(String oldFileNameWithPath, String newFileNameWithPath, CsvWriter csvWriter) throws FileException.NotExistInNewCommit, FileException.NotExistInOldCommit, FileException.CompilationError {
         String commit = newFileNameWithPath.split("/")[1];
-        String path = newFileNameWithPath.substring(newFileNameWithPath.lastIndexOf(commit) + commit.length() + 5);
+        String path = newFileNameWithPath.substring(newFileNameWithPath.lastIndexOf(commit) + commit.length() + 1);// to the start of new folder
+        path = path.substring(newFileNameWithPath.indexOf("/") + 1);//skipping new folder name
 
+        JavaFileDetails newFileDetails = null;
+        try {
+            newFileDetails = new JavaFileDetails(newFileNameWithPath);
+        } catch (FileNotFoundException e) {
+            throw new FileException.NotExistInNewCommit(path, commit);
+        } catch (ParseProblemException e) {
+            throw new FileException.CompilationError(path, commit);
+        }
+        JavaFileDetails oldFileDetails = null;
+        try {
+            oldFileDetails = new JavaFileDetails(oldFileNameWithPath);
+        } catch (FileNotFoundException e) {
+            throw new FileException.NotExistInOldCommit(path, commit);
+        } catch (ParseProblemException e) {
+            throw new FileException.CompilationError(path, commit);
+        }
+
+        // get diff of methods
         List<CallableDeclaration> newNotExistMethods = minus(newFileDetails.getCallables(), oldFileDetails.getCallables());
         List<CallableDeclaration> oldNotExistMethods = minus(oldFileDetails.getCallables(), newFileDetails.getCallables());
 
 
         boolean exist;
         for (CallableDeclaration newNotExistMethod : newNotExistMethods) {
+            //get changed methods
             exist = false;
             for (CallableDeclaration oldNotExistMethod : oldNotExistMethods) {
-                // if name is equal
                 if (methodsAreEqualInNameNotParams(newNotExistMethod, oldNotExistMethod)) {
                     exist = true;
                     if (newNotExistMethod instanceof MethodDeclaration && oldNotExistMethod instanceof MethodDeclaration) {
@@ -41,6 +59,7 @@ public class MethodDiff {
                     }
                 }
             }
+            //get added methods
             if (!exist) {
                 if (newNotExistMethod instanceof MethodDeclaration) {
                     String toSignature = ((MethodDeclaration) newNotExistMethod).getType().asString()
@@ -59,6 +78,7 @@ public class MethodDiff {
                     exist = true;
                 }
             }
+            //get deleted methods
             if (!exist) {
                 if (oldNotExistMethod instanceof MethodDeclaration) {
                     String fromSignature = ((MethodDeclaration) oldNotExistMethod).getType().asString()
