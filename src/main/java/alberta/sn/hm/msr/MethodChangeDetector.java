@@ -37,7 +37,8 @@ public class MethodChangeDetector {
         System.out.println("Application started");
         csvWriter = new CsvWriter();
         recreateFolders();
-        cloneGitRepository("https://github.com/hamedmirzaei/spring-boot-cloud-camel-composite-service-saga-inmemory.git");
+        //cloneGitRepository("https://github.com/hamedmirzaei/spring-boot-cloud-camel-composite-service-saga-inmemory.git");
+        cloneGitRepository("https://github.com/hamedmirzaei/camunda-bpm-examples.git");
 
         try (Repository repository = openGitRepository()) {
             try (Git git = new Git(repository)) {
