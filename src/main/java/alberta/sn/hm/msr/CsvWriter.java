@@ -10,7 +10,7 @@ public class CsvWriter {
     public CsvWriter() {
         try {
             this.csvWriter = new FileWriter("temp/result.csv");
-            this.csvWriter.write("Change Type,Commit SSH,File Name,From Signature, To Signature\n");
+            this.csvWriter.write("Type,Commit SSH,File Name,From Signature, To Signature\n");
         } catch (IOException e) {
             e.printStackTrace();
         }

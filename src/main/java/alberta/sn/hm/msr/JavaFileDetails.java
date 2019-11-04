@@ -8,6 +8,7 @@ import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.comments.Comment;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -84,7 +85,13 @@ public class JavaFileDetails {
 
     private List<ClassPair> getClasses(String file) throws FileNotFoundException, ParseProblemException {
         CompilationUnit cu = JavaParser.parse(new File(file));
+        removeComments(cu);
         return getClasses(cu, "", false);
+    }
+
+    private void removeComments(Node node) {
+        for (Comment comment: node.getAllContainedComments())
+            comment.remove();
     }
 
     public List<CallableDeclaration> getCallables() {

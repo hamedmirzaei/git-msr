@@ -40,53 +40,33 @@ public class MethodDiffGenerator {
         List<CallableDeclaration> newNotExistMethods = minus(newFileDetails.getCallables(), oldFileDetails.getCallables());
         List<CallableDeclaration> oldNotExistMethods = minus(oldFileDetails.getCallables(), newFileDetails.getCallables());
 
-
         boolean exist;
         for (CallableDeclaration newNotExistMethod : newNotExistMethods) {
             //get changed methods
             exist = false;
             for (CallableDeclaration oldNotExistMethod : oldNotExistMethods) {
-                if (methodsAreEqualInNameNotParams(newNotExistMethod, oldNotExistMethod)) {
+                if (methodsAreEqualInName(newNotExistMethod, oldNotExistMethod)) {
                     exist = true;
-                    if (newNotExistMethod instanceof MethodDeclaration && oldNotExistMethod instanceof MethodDeclaration) {
-                        String fromSignature = ((MethodDeclaration) oldNotExistMethod).getType().asString()
-                                + " " + oldNotExistMethod.getSignature().asString();
-                        String toSignature = ((MethodDeclaration) newNotExistMethod).getType().asString()
-                                + " " + newNotExistMethod.getSignature().asString();
-                        csvWriter.write("CHANGE", commit, path, fromSignature, toSignature);
-                    } else {
-                        csvWriter.write("CHANGE", commit, path, oldNotExistMethod.getSignature().asString(), newNotExistMethod.getSignature().asString());
-                    }
+                    csvWriter.write("CHANGE", commit, path, getMethodSignature(oldNotExistMethod), getMethodSignature(newNotExistMethod));
                 }
             }
             //get added methods
             if (!exist) {
-                if (newNotExistMethod instanceof MethodDeclaration) {
-                    String toSignature = ((MethodDeclaration) newNotExistMethod).getType().asString()
-                            + " " + newNotExistMethod.getSignature().asString();
-                    csvWriter.write("ADD", commit, path, "null", toSignature);
-                } else {
-                    csvWriter.write("ADD", commit, path, "null", newNotExistMethod.getSignature().asString());
-                }
+                if (newNotExistMethod instanceof MethodDeclaration)
+                    csvWriter.write("ADD", commit, path, "null", getMethodSignature(newNotExistMethod));
             }
         }
 
         for (CallableDeclaration oldNotExistMethod : oldNotExistMethods) {
             exist = false;
             for (CallableDeclaration newNotExistMethod : newNotExistMethods) {
-                if (methodsAreEqualInNameNotParams(oldNotExistMethod, newNotExistMethod)) {
+                if (methodsAreEqualInName(oldNotExistMethod, newNotExistMethod)) {
                     exist = true;
                 }
             }
             //get deleted methods
             if (!exist) {
-                if (oldNotExistMethod instanceof MethodDeclaration) {
-                    String fromSignature = ((MethodDeclaration) oldNotExistMethod).getType().asString()
-                            + " " + oldNotExistMethod.getSignature().asString();
-                    csvWriter.write("REMOVE", commit, path, fromSignature, "null");
-                } else {
-                    csvWriter.write("REMOVE", commit, path, oldNotExistMethod.getSignature().asString(), "null");
-                }
+                csvWriter.write("REMOVE", commit, path, getMethodSignature(oldNotExistMethod), "null");
             }
         }
         return null;
@@ -95,11 +75,16 @@ public class MethodDiffGenerator {
     private List<CallableDeclaration> minus(List<CallableDeclaration> a, List<CallableDeclaration> b) {
         List<CallableDeclaration> result = new ArrayList<>();
         boolean exist;
+        String method1Signature;
+        String method2Signature;
         for (CallableDeclaration method1 : a) {
             exist = false;
+            method1Signature = getMethodSignature(method1);
             for (CallableDeclaration method2 : b) {
                 // if all is equal
-                if (methodsAreEqualInSignature(method1, method2)) {
+                method2Signature = getMethodSignature(method2);
+                if (method1Signature.equals(method2Signature)) {
+                    //if (methodsAreEqualInSignature(method1, method2)) {
                     exist = true;
                     continue;
                 }
@@ -135,27 +120,45 @@ public class MethodDiffGenerator {
         return false;
     }
 
-    private Boolean methodsAreEqualInNameNotParams(CallableDeclaration method1, CallableDeclaration method2) {
-        // if name is equal
+    private Boolean methodsAreEqualInName(CallableDeclaration method1, CallableDeclaration method2) {
+        // check method names
         if (!method1.getNameAsString().equals(method2.getNameAsString())) {
             return false;
         }
-        // if parameters are equal
-        boolean allEqual = true;
-        if (method1.getParameters().size() == method2.getParameters().size()) {
-            for (int i = 0; i < method1.getParameters().size(); i++) {
-                Parameter parameter1 = method1.getParameter(i);
-                Parameter parameter2 = method2.getParameter(i);
-                if (!parameter1.getNameAsString().equals(parameter2.getNameAsString()) ||
-                        !parameter1.getType().asString().equals(parameter2.getType().asString())) {
-                    allEqual = false;
-                }
-            }
-            if (allEqual)
-                return false;
-        } else {
-            return true;
-        }
         return true;
+    }
+
+    private String getMethodSignature(CallableDeclaration method) {
+        if (method.toString().contains("void test()"))
+            System.out.println();
+        String signature = "";
+        if (!method.getModifiers().toString().equals(""))
+            signature = signature + getModifiers(method) + " ";
+
+        if (method instanceof MethodDeclaration)
+            if (!((MethodDeclaration) method).getType().toString().equals(""))
+                signature = signature + ((MethodDeclaration) method).getType().toString() + " ";
+
+        signature = signature + method.getNameAsString() + "(";
+
+        if (method.getParameters().size() > 0)
+            signature = signature +getParameters(method);
+
+        signature = signature + ")";
+        return signature;
+    }
+
+    private String getModifiers(CallableDeclaration method) {
+        return method.getModifiers().toString()
+                .replace("[", "")
+                .replace("]", "")
+                .replace(",", "")
+                .toLowerCase();
+    }
+
+    private String getParameters(CallableDeclaration method) {
+        return method.getParameters().toString()
+                .replace("[", "")
+                .replace("]", "");
     }
 }

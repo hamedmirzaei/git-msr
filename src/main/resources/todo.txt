@@ -1,2 +1,1 @@
-1. check parameter exact type like String[] and String... which are different but in the output shows equal
-	the result is correct but the representation is not
+1. check exceptions thrown
