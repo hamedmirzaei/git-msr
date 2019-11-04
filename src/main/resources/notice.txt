@@ -50,3 +50,6 @@ result contains two records:
 
 9. Some files may be deleted or added in a commit, since the file does not exist anymore in either old or new commit,
    they will be excluded from the results
+
+
+10. the first commit will not be included in result as added methods

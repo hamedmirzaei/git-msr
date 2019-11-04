@@ -23,23 +23,23 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public class MethodChangeDetector {
 
-    private static CsvWriter csvWriter = new CsvWriter();
+    private static CsvWriter csvWriter = null;
+    private static String DATA_FOLDER = "data";
     private static String TEMP_FOLDER = "temp";
     private static String NEW_FOLDER = "new";
     private static String OLD_FOLDER = "old";
 
     public static void main(String[] args) throws IOException, GitAPIException {
         System.out.println("Application started");
-        recreateTempFolder();
+        csvWriter = new CsvWriter();
+        recreateFolders();
+        cloneGitRepository("https://github.com/hamedmirzaei/spring-boot-cloud-camel-composite-service-saga-inmemory.git");
 
-        try (Repository repository = openRepository()) {
+        try (Repository repository = openGitRepository()) {
             try (Git git = new Git(repository)) {
                 System.out.println("Get all commits");
                 Iterable<RevCommit> commits = git.log().all().call();
@@ -86,7 +86,7 @@ public class MethodChangeDetector {
         ObjectId head = commit.getTree().toObjectId();
         if (commit.getParentCount() == 0) {
             System.out.println("This diff does not have a parent, so there is no diff");
-            return Collections.EMPTY_LIST;
+            return new ArrayList<>();
         }
         ObjectId oldHead = commit.getParent(0).getTree().toObjectId();
         System.out.println("The parent is " + commit.getParent(0).getId().getName());
@@ -148,13 +148,25 @@ public class MethodChangeDetector {
         }
     }
 
-    public static Repository openRepository() throws IOException {
+    public static Repository openGitRepository() throws IOException {
         System.out.println("Repository opened");
-        return Git.open(new File("data")).getRepository();
+        return Git.open(new File(DATA_FOLDER)).getRepository();
     }
 
-    private static void recreateTempFolder() throws IOException {
+    private static void cloneGitRepository(String repositoryURL)throws GitAPIException {
+        System.out.println("Repository cloning...");
+        Git.cloneRepository()
+                .setURI(repositoryURL)
+                .setDirectory(new File(DATA_FOLDER))
+                .setCloneAllBranches(false)
+                .call();
+        System.out.println("Repository cloned");
+    }
+
+    private static void recreateFolders() throws IOException {
         Files.walk(Paths.get(TEMP_FOLDER)).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
         new File(TEMP_FOLDER).mkdir();
+        Files.walk(Paths.get(DATA_FOLDER)).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+        new File(DATA_FOLDER).mkdir();
     }
 }

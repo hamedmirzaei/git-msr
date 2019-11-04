@@ -10,15 +10,15 @@ public class CsvWriter {
     public CsvWriter() {
         try {
             this.csvWriter = new FileWriter("temp/result.csv");
-            this.csvWriter.write("Commit SSH,File Name,From Signature, To Signature\n");
+            this.csvWriter.write("Change Type,Commit SSH,File Name,From Signature, To Signature\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void write(String commit, String fileName, String fromSignature, String toSignature) {
+    public void write(String changeType, String commit, String fileName, String fromSignature, String toSignature) {
         try {
-            this.csvWriter.write(commit + "," + fileName + "," +
+            this.csvWriter.write(changeType + "," + commit + "," + fileName + "," +
                     fromSignature.replaceAll(",", ";") + "," +
                     toSignature.replaceAll(",", ";") + "\n");
         } catch (IOException e) {

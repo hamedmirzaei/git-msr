@@ -17,7 +17,7 @@ public class MethodDiffGenerator {
     public HashSet<String> makeAndWriteDiffToFile(String oldFileNameWithPath, String newFileNameWithPath, CsvWriter csvWriter) throws FileException.NotExistInNewCommit, FileException.NotExistInOldCommit, FileException.CompilationError {
         String commit = newFileNameWithPath.split("/")[1];
         String path = newFileNameWithPath.substring(newFileNameWithPath.lastIndexOf(commit) + commit.length() + 1);// to the start of new folder
-        path = path.substring(newFileNameWithPath.indexOf("/") + 1);//skipping new folder name
+        path = path.substring(newFileNameWithPath.indexOf("/"));//skipping new folder name
 
         JavaFileDetails newFileDetails = null;
         try {
@@ -53,9 +53,9 @@ public class MethodDiffGenerator {
                                 + " " + oldNotExistMethod.getSignature().asString();
                         String toSignature = ((MethodDeclaration) newNotExistMethod).getType().asString()
                                 + " " + newNotExistMethod.getSignature().asString();
-                        csvWriter.write(commit, path, fromSignature, toSignature);
+                        csvWriter.write("CHANGE", commit, path, fromSignature, toSignature);
                     } else {
-                        csvWriter.write(commit, path, oldNotExistMethod.getSignature().asString(), newNotExistMethod.getSignature().asString());
+                        csvWriter.write("CHANGE", commit, path, oldNotExistMethod.getSignature().asString(), newNotExistMethod.getSignature().asString());
                     }
                 }
             }
@@ -64,9 +64,9 @@ public class MethodDiffGenerator {
                 if (newNotExistMethod instanceof MethodDeclaration) {
                     String toSignature = ((MethodDeclaration) newNotExistMethod).getType().asString()
                             + " " + newNotExistMethod.getSignature().asString();
-                    csvWriter.write(commit, path, "null", toSignature);
+                    csvWriter.write("ADD", commit, path, "null", toSignature);
                 } else {
-                    csvWriter.write(commit, path, "null", newNotExistMethod.getSignature().asString());
+                    csvWriter.write("ADD", commit, path, "null", newNotExistMethod.getSignature().asString());
                 }
             }
         }
@@ -83,9 +83,9 @@ public class MethodDiffGenerator {
                 if (oldNotExistMethod instanceof MethodDeclaration) {
                     String fromSignature = ((MethodDeclaration) oldNotExistMethod).getType().asString()
                             + " " + oldNotExistMethod.getSignature().asString();
-                    csvWriter.write(commit, path, fromSignature, "null");
+                    csvWriter.write("REMOVE", commit, path, fromSignature, "null");
                 } else {
-                    csvWriter.write(commit, path, oldNotExistMethod.getSignature().asString(), "null");
+                    csvWriter.write("REMOVE", commit, path, oldNotExistMethod.getSignature().asString(), "null");
                 }
             }
         }

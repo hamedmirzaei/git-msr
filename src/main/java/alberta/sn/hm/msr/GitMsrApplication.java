@@ -1,6 +1,7 @@
 package alberta.sn.hm.msr;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.springframework.boot.CommandLineRunner;
@@ -20,11 +21,8 @@ public class GitMsrApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        Git git = Git.cloneRepository()
-                .setURI("https://github.com/hamedmirzaei/test-msr2.git")
-                .setDirectory(new File("data"))
-                .setCloneAllBranches(true)
-                .call();
+        //cloneGit("https://github.com/hamedmirzaei/test-msr2.git");
+        cloneGit("https://github.com/hamedmirzaei/transfer-rest.git");
 
         /*try (Repository repository = openJGitCookbookRepository()) {
             try (Git git = new Git(repository)) {
@@ -37,6 +35,14 @@ public class GitMsrApplication implements CommandLineRunner {
                 }
             }
         }*/
+    }
+
+    private void cloneGit(String repoURL) throws GitAPIException {
+        Git.cloneRepository()
+                .setURI(repoURL)
+                .setDirectory(new File("data"))
+                .setCloneAllBranches(true)
+                .call();
     }
 
     public static Repository openJGitCookbookRepository() throws IOException {
