@@ -16,9 +16,10 @@ public class MethodDiffGenerator {
 
     public HashSet<String> execute(String oldFileNameWithPath, String newFileNameWithPath, CsvWriter csvWriter)
             throws FileException.NotExistInNewCommit, FileException.NotExistInOldCommit, FileException.CompilationError {
-        String commit = newFileNameWithPath.split("/")[1];
+        //C:/Users/Mirzaei/IdeaProjects/My Git Projects/temp/f816a88e7e609e47c864d1565f063ff8e56ebf87/new/spring-statemachine-core/src/main/java/org/springframework/statemachine/access/StateMachineAccessor.java
+        String commit = newFileNameWithPath.substring(newFileNameWithPath.indexOf("/temp/") + 1).split("/")[1];
         String path = newFileNameWithPath.substring(newFileNameWithPath.lastIndexOf(commit) + commit.length() + 1);// to the start of new folder
-        path = path.substring(newFileNameWithPath.indexOf("/"));//skipping new folder name
+        path = path.substring(path.indexOf("/") + 1);//skipping new folder name
 
         JavaFileDetails newFileDetails;
         try {

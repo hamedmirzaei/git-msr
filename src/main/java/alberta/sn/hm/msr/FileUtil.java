@@ -13,8 +13,8 @@ public class FileUtil {
         try {
             deleteFolder(Constants.TEMP_FOLDER);
             new File(Constants.TEMP_FOLDER).mkdir();
-            //deleteFolder(Constants.DATA_FOLDER);
-            //new File(Constants.DATA_FOLDER).mkdir();
+            deleteFolder(Constants.DATA_FOLDER);
+            new File(Constants.DATA_FOLDER).mkdir();
         } catch (IOException e) {
             e.printStackTrace();
         }

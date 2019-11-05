@@ -50,3 +50,6 @@ result contains two records:
 *. Since java has primitive data types like "int" in addition to corresponding class types like "Integer", we consider
     these as two different data types and a method change will be detected because of changing parameter from int to Integer
 
+
+*. one of java features is to create classes inside other classes (inner classes). in this version, we excluded changes
+	to the methods of inner classes
