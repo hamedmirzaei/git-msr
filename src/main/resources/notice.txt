@@ -46,3 +46,7 @@ result contains two records:
 *. in the process of developing a project, packages can be renamed. so, you may find a record in result which its file
     does not exist in the current working packages
 
+
+*. Since java has primitive data types like "int" in addition to corresponding class types like "Integer", we consider
+    these as two different data types and a method change will be detected because of changing parameter from int to Integer
+
