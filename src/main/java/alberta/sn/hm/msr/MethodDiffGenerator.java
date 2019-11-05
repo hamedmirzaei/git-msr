@@ -14,12 +14,13 @@ import java.util.List;
 public class MethodDiffGenerator {
 
 
-    public HashSet<String> makeAndWriteDiffToFile(String oldFileNameWithPath, String newFileNameWithPath, CsvWriter csvWriter) throws FileException.NotExistInNewCommit, FileException.NotExistInOldCommit, FileException.CompilationError {
+    public HashSet<String> execute(String oldFileNameWithPath, String newFileNameWithPath, CsvWriter csvWriter)
+            throws FileException.NotExistInNewCommit, FileException.NotExistInOldCommit, FileException.CompilationError {
         String commit = newFileNameWithPath.split("/")[1];
         String path = newFileNameWithPath.substring(newFileNameWithPath.lastIndexOf(commit) + commit.length() + 1);// to the start of new folder
         path = path.substring(newFileNameWithPath.indexOf("/"));//skipping new folder name
 
-        JavaFileDetails newFileDetails = null;
+        JavaFileDetails newFileDetails;
         try {
             newFileDetails = new JavaFileDetails(newFileNameWithPath);
         } catch (FileNotFoundException e) {
@@ -27,7 +28,7 @@ public class MethodDiffGenerator {
         } catch (ParseProblemException e) {
             throw new FileException.CompilationError(path, commit);
         }
-        JavaFileDetails oldFileDetails = null;
+        JavaFileDetails oldFileDetails;
         try {
             oldFileDetails = new JavaFileDetails(oldFileNameWithPath);
         } catch (FileNotFoundException e) {
@@ -96,7 +97,7 @@ public class MethodDiffGenerator {
     }
 
     private Boolean methodsAreEqualInSignature(CallableDeclaration method1, CallableDeclaration method2) {
-        // is return type is equal
+        // if return type is equal
         if (method1 instanceof MethodDeclaration && method2 instanceof MethodDeclaration)
             if (!((MethodDeclaration) method1).getType().asString().equals(((MethodDeclaration) method2).getType().asString())) {
                 return false;
@@ -129,7 +130,7 @@ public class MethodDiffGenerator {
     }
 
     private String getMethodSignature(CallableDeclaration method) {
-        if (method.toString().contains("void test()"))
+        if (method.toString().contains("void main"))
             System.out.println();
         String signature = "";
         if (!method.getModifiers().toString().equals(""))
@@ -157,8 +158,6 @@ public class MethodDiffGenerator {
     }
 
     private String getParameters(CallableDeclaration method) {
-        return method.getParameters().toString()
-                .replace("[", "")
-                .replace("]", "");
+        return method.getParameters().toString().trim().substring(1, method.getParameters().toString().trim().length() - 1);
     }
 }

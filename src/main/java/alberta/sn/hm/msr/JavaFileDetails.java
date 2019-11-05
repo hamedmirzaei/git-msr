@@ -17,14 +17,12 @@ import java.util.List;
 
 public class JavaFileDetails {
 
-    private String fileName;
-    private List<ClassPair> classes = new ArrayList<>();
+    private List<ClassPair> classes;
     private List<ConstructorDeclaration> constructors = new ArrayList<>();
     private List<MethodDeclaration> methods = new ArrayList<>();
     private List<CallableDeclaration> callables = new ArrayList<>();
 
-    public JavaFileDetails(String fileName) throws FileNotFoundException {
-        this.fileName = fileName;
+    public JavaFileDetails(String fileName) throws FileNotFoundException, ParseProblemException {
         this.classes = getClasses(fileName);
         for (ClassPair c : this.classes) {
             this.constructors.addAll(getChildNodesNotInClass(c.clazz, ConstructorDeclaration.class));
@@ -48,7 +46,7 @@ public class JavaFileDetails {
         List<N> nodes = new ArrayList<>();
         for (Node child : n.getChildNodes()) {
             if (child instanceof ClassOrInterfaceDeclaration) {
-                // Don't go into a nested class
+                //TODO Don't go into a nested class
                 continue;
             }
             if (clazz.isInstance(child)) {
@@ -63,34 +61,36 @@ public class JavaFileDetails {
         List<ClassPair> pairList = new ArrayList<>();
         for (Node child : n.getChildNodes()) {
             if (child instanceof ClassOrInterfaceDeclaration) {
+                //inner classes
                 ClassOrInterfaceDeclaration c = (ClassOrInterfaceDeclaration) child;
                 String cName = parents + c.getNameAsString();
                 if (inMethod) {
-                    System.out.println(
-                            "WARNING: Class " + cName + " is located inside a method. We cannot predict its name at"
-                                    + " compile time so it will not be diffed."
+                    System.out.println("WARNING: Class " + cName + " is located inside a method. We cannot " +
+                            "predict its name at compile time so it will not be diffed."
                     );
                 } else {
                     pairList.add(new ClassPair(c, cName));
                     pairList.addAll(getClasses(c, cName + "$", inMethod));
                 }
             } else if (child instanceof MethodDeclaration || child instanceof ConstructorDeclaration) {
+                // methods and constructors
                 pairList.addAll(getClasses(child, parents, true));
             } else {
+                //maybe interfaces and all others
                 pairList.addAll(getClasses(child, parents, inMethod));
             }
         }
         return pairList;
     }
 
-    private List<ClassPair> getClasses(String file) throws FileNotFoundException, ParseProblemException {
+    private List<ClassPair> getClasses(String file) throws FileNotFoundException {
         CompilationUnit cu = JavaParser.parse(new File(file));
         removeComments(cu);
         return getClasses(cu, "", false);
     }
 
     private void removeComments(Node node) {
-        for (Comment comment: node.getAllContainedComments())
+        for (Comment comment : node.getAllContainedComments())
             comment.remove();
     }
 

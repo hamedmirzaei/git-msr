@@ -2,7 +2,7 @@ package alberta.sn.hm.msr.exception;
 
 public class FileException {
 
-    // old not found
+    // old not exist
     public static class NotExistInOldCommit extends BaseException {
         private String filePath;
         private String commitId;
@@ -22,6 +22,7 @@ public class FileException {
         }
     }
 
+    // new not exist
     public static class NotExistInNewCommit extends BaseException {
         private String filePath;
         private String commitId;
@@ -41,6 +42,7 @@ public class FileException {
         }
     }
 
+    // compile error
     public static class CompilationError extends BaseException {
         private String filePath;
         private String commitId;
@@ -57,6 +59,34 @@ public class FileException {
 
         public String getCommitId() {
             return commitId;
+        }
+    }
+
+    // exception during generating diff file
+    public static class DiffGenerationException extends BaseException {
+        private String fileName;
+
+        public DiffGenerationException(String fileName) {
+            super("The .diff file " + fileName + " could not be written");
+            this.fileName = fileName;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+    }
+
+    // exception during generating old/new file
+    public static class OldNewGenerationException extends BaseException {
+        private String filePath;
+
+        public OldNewGenerationException(String filePath) {
+            super("The old/new file " + filePath + " could not be written");
+            this.filePath = filePath;
+        }
+
+        public String getFilePath() {
+            return filePath;
         }
     }
 

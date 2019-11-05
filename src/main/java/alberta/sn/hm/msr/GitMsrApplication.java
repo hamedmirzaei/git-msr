@@ -1,9 +1,9 @@
 package alberta.sn.hm.msr;
 
 import alberta.sn.hm.msr.exception.FileException;
+import alberta.sn.hm.msr.exception.GitException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.NoHeadException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.ObjectId;
@@ -24,25 +24,29 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 
 public class GitMsrApplication {
 
-    private static CsvWriter csvWriter = null;
+    private static CsvWriter csvWriter = new CsvWriter();
     private static String DATA_FOLDER = "data";
     private static String TEMP_FOLDER = "temp";
     private static String NEW_FOLDER = "new";
     private static String OLD_FOLDER = "old";
+    private static Boolean KEEP_TEMP_FILES = false;
+
+    private static MethodDiffGenerator methodDiffGenerator = new MethodDiffGenerator();
 
     public static void main(String[] args) {
         System.out.println("Application started");
-        csvWriter = new CsvWriter();
+        recreateFolders();
         try {
-            recreateFolders();
-        } catch (IOException e) {
-            e.printStackTrace();
+            cloneGitRepository("https://github.com/hamedmirzaei/camunda-bpm-examples.git");
+        } catch (GitAPIException e) {
+            System.out.println("Exception raised during cloning repository");
         }
-        //cloneGitRepository("https://github.com/hamedmirzaei/camunda-bpm-examples.git");
         //cloneGitRepository("https://github.com/hamedmirzaei/test-msr2.git");
 
         try (Repository repository = openGitRepository()) {
@@ -55,47 +59,52 @@ public class GitMsrApplication {
                 Iterator<RevCommit> iterator = commits.iterator();
                 while (iterator.hasNext()) {
                     RevCommit commit = iterator.next();
-                    processCommit(repository, commit);
-                    deleteFolder(TEMP_FOLDER + "/" + commit.getId().getName());
-                    new File(TEMP_FOLDER + "/" + commit.getId().getName() + ".diff").delete();
+                    try {
+                        processCommit(repository, commit);
+                    } catch (GitException.ParentNotExistForCommitException | GitException.DiffOperationException ex) {
+                        System.out.println(ex.getMessage());
+                    }
+                    if (!KEEP_TEMP_FILES) {
+                        deleteFolder(TEMP_FOLDER + "/" + commit.getId().getName());
+                        new File(TEMP_FOLDER + "/" + commit.getId().getName() + ".diff").delete();
+                    }
                 }
             } catch (GitAPIException e) {
-                e.printStackTrace();
+                System.out.println("Exception raised during getting commits from repository");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Exception raised during opening repository");
         }
         csvWriter.close();
     }
 
-    private static void processCommit(Repository repository, RevCommit commit) {
+    private static void processCommit(Repository repository, RevCommit commit) throws GitException.ParentNotExistForCommitException, GitException.DiffOperationException {
         String commitId = commit.getId().getName();
         System.out.println("\nProcessing commit " + commitId);
-        List<DiffEntry> diffEntries = null;
-        try {
-            diffEntries = executeGitDiffCommand(repository, commit);
-        } catch (IOException | GitAPIException e) {
-            //e.printStackTrace();
-        }
-        if (diffEntries!= null && !diffEntries.isEmpty()) {
+        List<DiffEntry> diffEntries;
+        diffEntries = executeGitDiffCommand(repository, commit);
+        if (diffEntries != null && !diffEntries.isEmpty()) {
             System.out.println("There are #" + diffEntries.size() + " diff entries");
-            String diffFileName = TEMP_FOLDER + "/" + commitId + ".diff";
+            String diffFileName = "";
+            diffFileName = TEMP_FOLDER + "/" + commitId + ".diff";
             try {
                 new File(diffFileName).createNewFile();
             } catch (IOException e) {
-                //e.printStackTrace();
+                System.out.println("Exception raised during .diff file creation");
             }
             for (DiffEntry diffEntry : diffEntries) {
                 System.out.println("Processing diff entry " + diffEntry.getNewPath());
                 try {
-                    generateOldNewFileForDiffEntry(repository, commit, diffEntry.getNewPath());
-                } catch (IOException e) {
-                    //e.printStackTrace();
+                    processDiffEntry(repository, commit, diffEntry.getNewPath());
+                } catch (FileException.NotExistInOldCommit | FileException.NotExistInNewCommit | FileException.CompilationError | FileException.OldNewGenerationException ex) {
+                    System.out.println(ex.getMessage());
                 }
-                try {
-                    appendDiffEntryToDiffFile(repository, diffEntry, diffFileName);
-                } catch (IOException e) {
-                    //e.printStackTrace();
+                if (!diffFileName.equals("")) {
+                    try {
+                        appendDiffEntryToDiffFile(repository, diffEntry, diffFileName);
+                    } catch (FileException.DiffGenerationException ex) {
+                        System.out.println(ex.getMessage());
+                    }
                 }
             }
         } else {
@@ -103,21 +112,29 @@ public class GitMsrApplication {
         }
     }
 
-    private static void appendDiffEntryToDiffFile(Repository repository, DiffEntry diffEntry, String diffFileName) throws IOException {
-        FileOutputStream out = new FileOutputStream(diffFileName, true);
-        try (DiffFormatter formatter = new DiffFormatter(out)) {
+    private static void appendDiffEntryToDiffFile(Repository repository, DiffEntry diffEntry, String diffFileName) throws FileException.DiffGenerationException {
+        FileOutputStream out = null;
+        try {
+            out = new FileOutputStream(diffFileName, true);
+            DiffFormatter formatter = new DiffFormatter(out);
             formatter.setRepository(repository);
             formatter.format(diffEntry);
+            out.close();
+        } catch (IOException e) {
+            try {
+                out.close();
+            } catch (IOException e1) {
+            }
+            throw new FileException.DiffGenerationException(diffFileName);
         }
-        out.close();
     }
 
-    private static List<DiffEntry> executeGitDiffCommand(Repository repository, RevCommit commit) throws IOException, GitAPIException {
+    private static List<DiffEntry> executeGitDiffCommand(Repository repository, RevCommit commit)
+            throws GitException.ParentNotExistForCommitException, GitException.DiffOperationException {
         System.out.println("Making diff of commit with its parent");
         ObjectId head = commit.getTree().toObjectId();
         if (commit.getParentCount() == 0) {
-            System.out.println("This diff does not have a parent, so there is no diff");
-            return new ArrayList<>();
+            throw new GitException.ParentNotExistForCommitException(commit.getId().getName());
         }
         ObjectId oldHead = commit.getParent(0).getTree().toObjectId();
         System.out.println("The parent is " + commit.getParent(0).getId().getName());
@@ -131,29 +148,32 @@ public class GitMsrApplication {
                 // finally get the list of changed files
                 TreeFilter filter = PathSuffixFilter.create(".java");
                 return git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).setPathFilter(filter).call();
+            } catch (GitAPIException | IOException e) {
+                throw new GitException.DiffOperationException();
             }
         }
     }
 
-    private static void generateOldNewFileForDiffEntry(Repository repository, RevCommit commit, String path) throws IOException {
-        System.out.println("Move content of diff entry for " + path + " to " + NEW_FOLDER + " folder");
+    private static void processDiffEntry(Repository repository, RevCommit commit, String path)
+            throws FileException.NotExistInOldCommit, FileException.NotExistInNewCommit, FileException.CompilationError, FileException.OldNewGenerationException {
         String commitId = commit.getId().getName();
-        generateOldNewFileForDiffEntry(repository, commit.getTree(), path, commitId, true);
+        System.out.println("Move content of diff entry for " + path + " to " + NEW_FOLDER + " folder");
+        generateOldNewFile(repository, commit.getTree(), path, commitId, true);
         System.out.println("Move content of diff entry for " + path + " to " + OLD_FOLDER + " folder");
-        generateOldNewFileForDiffEntry(repository, commit.getParent(0).getTree(), path, commitId, false);
-
-        MethodDiffGenerator methodDiffGenerator = new MethodDiffGenerator();
-        try {
-            methodDiffGenerator.makeAndWriteDiffToFile(
-                    TEMP_FOLDER + "/" + commitId + "/" + OLD_FOLDER + "/" + path,
-                    TEMP_FOLDER + "/" + commitId + "/" + NEW_FOLDER + "/" + path,
-                    csvWriter);
-        } catch (FileException.NotExistInOldCommit | FileException.NotExistInNewCommit | FileException.CompilationError e) {
-            System.out.println(e.getMessage());
-        }
+        generateOldNewFile(repository, commit.getParent(0).getTree(), path, commitId, false);
+        System.out.println("Extracting result...");
+        extractResults(commitId, path);
+        System.out.println("Results Extracted");
     }
 
-    private static void generateOldNewFileForDiffEntry(Repository repository, RevTree tree, String fileFullPath, String commitId, Boolean newFile) throws IOException {
+    private static void extractResults(String commitId, String path) throws FileException.NotExistInOldCommit, FileException.NotExistInNewCommit, FileException.CompilationError {
+        methodDiffGenerator.execute(
+                TEMP_FOLDER + "/" + commitId + "/" + OLD_FOLDER + "/" + path,
+                TEMP_FOLDER + "/" + commitId + "/" + NEW_FOLDER + "/" + path,
+                csvWriter);
+    }
+
+    private static void generateOldNewFile(Repository repository, RevTree tree, String fileFullPath, String commitId, Boolean newFile) throws FileException.OldNewGenerationException {
         try (TreeWalk treeWalk = new TreeWalk(repository)) {
             treeWalk.addTree(tree);
             treeWalk.setRecursive(true);
@@ -180,6 +200,8 @@ public class GitMsrApplication {
                     out.close();
                 }
             }
+        } catch (IOException e) {
+            throw new FileException.OldNewGenerationException(fileFullPath);
         }
     }
 
@@ -188,7 +210,7 @@ public class GitMsrApplication {
         return Git.open(new File(DATA_FOLDER)).getRepository();
     }
 
-    private static void cloneGitRepository(String repositoryURL)throws GitAPIException {
+    private static void cloneGitRepository(String repositoryURL) throws GitAPIException {
         System.out.println("Repository cloning...");
         Git.cloneRepository()
                 .setURI(repositoryURL)
@@ -198,11 +220,15 @@ public class GitMsrApplication {
         System.out.println("Repository cloned");
     }
 
-    private static void recreateFolders() throws IOException {
-        deleteFolder(TEMP_FOLDER);
-        new File(TEMP_FOLDER).mkdir();
-        //deleteFolder(DATA_FOLDER);
-        //new File(DATA_FOLDER).mkdir();
+    private static void recreateFolders() {
+        try {
+            deleteFolder(TEMP_FOLDER);
+            new File(TEMP_FOLDER).mkdir();
+            deleteFolder(DATA_FOLDER);
+            new File(DATA_FOLDER).mkdir();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static void deleteFolder(String path) throws IOException {
