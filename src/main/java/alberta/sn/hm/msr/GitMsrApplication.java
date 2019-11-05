@@ -23,7 +23,8 @@ public class GitMsrApplication {
         System.out.println("Application started");
         FileUtil.recreateFolders();
         try {
-            cloneGitRepository("https://github.com/spring-projects/spring-statemachine.git");
+            //cloneGitRepository("https://github.com/spring-projects/spring-statemachine.git");
+            cloneGitRepository("https://github.com/spring-projects/spring-batch.git");
         } catch (GitAPIException e) {
             System.out.println("Exception raised during cloning repository");
         }
