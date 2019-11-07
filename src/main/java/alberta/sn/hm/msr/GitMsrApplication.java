@@ -17,7 +17,7 @@ public class GitMsrApplication {
 
     public static void main(String[] args) {
         System.out.println("Application started");
-        String[] argsTest = new String[8];
+        /*String[] argsTest = new String[8];
         argsTest[0] = "-basePath";
         argsTest[1] = "C:/Git-Msr/";
         argsTest[2] = "-threadPoolSize";
@@ -25,9 +25,9 @@ public class GitMsrApplication {
         argsTest[4] = "-keepTempFiles";
         argsTest[5] = "false";
         argsTest[6] = "-options";
-        argsTest[7] = "1111111";
+        argsTest[7] = "1111111";*/
         try {
-            processInputArguments(argsTest);
+            processInputArguments(args);
         } catch (CommonException.InputArgsValidationException e) {
             System.out.println(e.getMessage());
             return;
