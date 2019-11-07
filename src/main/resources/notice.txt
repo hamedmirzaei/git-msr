@@ -53,3 +53,7 @@ result contains two records:
 
 *. one of java features is to create classes inside other classes (inner classes). in this version, we excluded changes
 	to the methods of inner classes
+
+
+*. each git repository can have multiple branches with different chains of commits. in this version we just inspect changes
+    in the current main branch (HEAD or master)
