@@ -1,12 +1,7 @@
 *. all methods, including added, removed and changed are detected
     - add means exist in new commit but not old one
     - remove means exist in old commit and removed in the new one
-    - change means exist in both new and old commits
-
-
-*. we consider everything as method signature including identifiers like static and public, return type, input parameters
-    and even name of parameters (we know that return type and parameter name is not a part of method signature - this is
-    just a decision to include them in)
+    - change means exist in both new and old commits but changed in return type, modifiers, or parameters
 
 
 *. because of method overloading, we may have multiple changes for a single method.
