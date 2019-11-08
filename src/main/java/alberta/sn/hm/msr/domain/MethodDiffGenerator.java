@@ -55,19 +55,20 @@ public class MethodDiffGenerator {
                 if (methodsAreEqualInName(newNotExistMethod, oldNotExistMethod)) {
                     exist = true;
                     changes = detectChanges(newNotExistMethod, oldNotExistMethod);
-                    csvWriter.write(
-                            changes.stream().map(x -> x.name()).collect(Collectors.joining(";")),
-                            commit,
-                            path,
-                            getMethodSignature(oldNotExistMethod),
-                            getMethodSignature(newNotExistMethod));
+                    if (changes.size() != 0)
+                        csvWriter.write(
+                                changes.stream().map(x -> x.name()).collect(Collectors.joining(";")),
+                                commit,
+                                path,
+                                getMethodSignature(oldNotExistMethod),
+                                getMethodSignature(newNotExistMethod));
                 }
             }
             //get added methods
-            if (!exist) {
-                if (newNotExistMethod instanceof MethodDeclaration)
-                    csvWriter.write(ChangeType.METHOD_ADD.name(), commit, path, "null", getMethodSignature(newNotExistMethod));
-            }
+            if (Constants.properties.getDetectMethodAdd())
+                if (!exist)
+                    if (newNotExistMethod instanceof MethodDeclaration)
+                        csvWriter.write(ChangeType.METHOD_ADD.name(), commit, path, "null", getMethodSignature(newNotExistMethod));
         }
 
         for (CallableDeclaration oldNotExistMethod : oldNotExistMethods) {
@@ -78,9 +79,9 @@ public class MethodDiffGenerator {
                 }
             }
             //get deleted methods
-            if (!exist) {
-                csvWriter.write(ChangeType.METHOD_REMOVE.name(), commit, path, getMethodSignature(oldNotExistMethod), "null");
-            }
+            if (Constants.properties.getDetectMethodRemove())
+                if (!exist)
+                    csvWriter.write(ChangeType.METHOD_REMOVE.name(), commit, path, getMethodSignature(oldNotExistMethod), "null");
         }
         return null;
     }
@@ -88,18 +89,26 @@ public class MethodDiffGenerator {
     private List<ChangeType> detectChanges(CallableDeclaration method1, CallableDeclaration method2) {
         List<ChangeType> changes = new ArrayList<>();
 
-        if (!getModifiers(method1).equals(getModifiers(method2)))
-            changes.add(ChangeType.METHOD_CHANGE_MODIFIER);
+        if (Constants.properties.getDetectMethodChangeReturn())
+            if (!getReturnType(method1).equals(getReturnType(method2)))
+                changes.add(ChangeType.METHOD_CHANGE_RETURN);
 
-        if (!getReturnType(method1).equals(getReturnType(method2)))
-            changes.add(ChangeType.METHOD_CHANGE_RETURN);
+        if (Constants.properties.getDetectMethodChangeModifier())
+            if (!getModifiers(method1).equals(getModifiers(method2)))
+                changes.add(ChangeType.METHOD_CHANGE_MODIFIER);
 
-        if (method1.getParameters().size() > method2.getParameters().size())
-            changes.add(ChangeType.PARAMETER_ADD);
-        else if (method1.getParameters().size() < method2.getParameters().size())
-            changes.add(ChangeType.PARAMETER_REMOVE);
-        else if (!getParameters(method1).equals(getParameters(method2)))
-            changes.add(ChangeType.PARAMETER_CHANGE);
+        if (Constants.properties.getDetectParameterAdd())
+            if (method1.getParameters().size() > method2.getParameters().size())
+                changes.add(ChangeType.PARAMETER_ADD);
+
+        if (Constants.properties.getDetectParameterRemove())
+            if (method1.getParameters().size() < method2.getParameters().size())
+                changes.add(ChangeType.PARAMETER_REMOVE);
+
+        if (Constants.properties.getDetectParameterChange())
+            if (method1.getParameters().size() == method2.getParameters().size())
+                if (!getParameters(method1).equals(getParameters(method2)))
+                    changes.add(ChangeType.PARAMETER_CHANGE);
 
         return changes;
     }

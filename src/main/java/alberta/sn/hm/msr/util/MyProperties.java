@@ -8,6 +8,7 @@ public class MyProperties {
 
     private Properties properties;
     private String basePath;
+    private String repositoryFolderPath;
     private Integer threadPoolSize;
     private Boolean keepTemporaryFiles;
     private Boolean detectMethodAdd;
@@ -30,15 +31,11 @@ public class MyProperties {
         } catch (IOException ex) {
             System.out.println("Some problem occurred during opening " + classPathFileName + " file in the class path");
         }
-        try {
-            prepareTheWorld();
-        } catch (IOException e) {
-            System.out.println("Some problem occurred during creating required application's paths");
-        }
     }
 
     private void initializeAllFields() {
         this.basePath = null;
+        this.repositoryFolderPath = null;
         this.threadPoolSize = null;
         this.keepTemporaryFiles = null;
         this.detectMethodAdd = null;
@@ -48,12 +45,6 @@ public class MyProperties {
         this.detectParameterAdd = null;
         this.detectParameterRemove = null;
         this.detectParameterChange = null;
-    }
-
-    private void prepareTheWorld() throws IOException {
-        FileUtil.createPath(getBasePath());
-        FileUtil.createPath(getRepositoryFolderPath());
-        FileUtil.createPath(getOutputFolderPath());
     }
 
     private String getBasePath() {
@@ -68,6 +59,8 @@ public class MyProperties {
     }
 
     public String getRepositoryFolderPath() {
+        if (this.repositoryFolderPath != null)
+            return this.repositoryFolderPath;
         return getBasePath() + getRepositoryFolderName();
     }
 
@@ -149,6 +142,10 @@ public class MyProperties {
         this.basePath = basePath;
     }
 
+    public void setRepositoryFolderPath(String repositoryFolderPath) {
+        this.repositoryFolderPath = repositoryFolderPath;
+    }
+
     public void setThreadPoolSize(Integer threadPoolSize) {
         this.threadPoolSize = threadPoolSize;
     }
@@ -184,4 +181,5 @@ public class MyProperties {
     public void setDetectParameterChange(Boolean detectParameterChange) {
         this.detectParameterChange = detectParameterChange;
     }
+
 }
