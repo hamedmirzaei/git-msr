@@ -1,4 +1,4 @@
-Type,Commit SSH,File Name,From Signature, To Signature
+Type,Commit SHA,Java File,Old Function Signature,New Function Signature
 METHOD_ADD,efbd72b4d1a0437ca893627b4abb05e30d3f452d,spring-statemachine-samples/turnstilereactive/src/main/java/demo/turnstilereactive/StateMachineController.java,null,public Flux<EventResult> events(@RequestBody Flux<EventData> eventData)
 METHOD_ADD,efbd72b4d1a0437ca893627b4abb05e30d3f452d,spring-statemachine-samples/turnstilereactive/src/main/java/demo/turnstilereactive/StateMachineController.java,null,public ResultType getResultType()
 METHOD_REMOVE,efbd72b4d1a0437ca893627b4abb05e30d3f452d,spring-statemachine-samples/turnstilereactive/src/main/java/demo/turnstilereactive/StateMachineController.java,public Flux<ResultType> event(@RequestBody Mono<EventData> eventData),null
