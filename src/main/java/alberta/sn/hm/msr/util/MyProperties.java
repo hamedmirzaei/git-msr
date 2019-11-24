@@ -87,55 +87,64 @@ public class MyProperties {
     public Integer getThreadPoolSize() {
         if (this.threadPoolSize != null)
             return this.threadPoolSize;
-        return Integer.parseInt(properties.getProperty("thread.pool.size"));
+        this.threadPoolSize = Integer.parseInt(properties.getProperty("thread.pool.size"));
+        return this.threadPoolSize;
     }
 
     public Boolean getKeepTemporaryFiles() {
         if (this.keepTemporaryFiles != null)
             return this.keepTemporaryFiles;
-        return Boolean.parseBoolean(properties.getProperty("keep.temporary.files"));
+        this.keepTemporaryFiles = Boolean.parseBoolean(properties.getProperty("keep.temporary.files"));
+        return this.keepTemporaryFiles;
     }
 
     public Boolean getDetectMethodAdd() {
         if (this.detectMethodAdd != null)
             return this.detectMethodAdd;
-        return Boolean.parseBoolean(properties.getProperty("detect.method.add"));
+        this.detectMethodAdd = Boolean.parseBoolean(properties.getProperty("detect.method.add"));
+        return this.detectMethodAdd;
     }
 
     public Boolean getDetectMethodRemove() {
         if (this.detectMethodRemove != null)
             return this.detectMethodRemove;
-        return Boolean.parseBoolean(properties.getProperty("detect.method.remove"));
+        this.detectMethodRemove = Boolean.parseBoolean(properties.getProperty("detect.method.remove"));
+        return this.detectMethodRemove;
     }
 
     public Boolean getDetectMethodChangeReturn() {
         if (this.detectMethodChangeReturn != null)
             return this.detectMethodChangeReturn;
-        return Boolean.parseBoolean(properties.getProperty("detect.method.change.return"));
+        this.detectMethodChangeReturn = Boolean.parseBoolean(properties.getProperty("detect.method.change.return"));
+        return this.detectMethodChangeReturn;
     }
 
     public Boolean getDetectMethodChangeModifier() {
         if (this.detectMethodChangeModifier != null)
             return this.detectMethodChangeModifier;
-        return Boolean.parseBoolean(properties.getProperty("detect.method.change.modifier"));
+        this.detectMethodChangeModifier = Boolean.parseBoolean(properties.getProperty("detect.method.change.modifier"));
+        return this.detectMethodChangeModifier;
     }
 
     public Boolean getDetectParameterAdd() {
         if (this.detectParameterAdd != null)
             return this.detectParameterAdd;
-        return Boolean.parseBoolean(properties.getProperty("detect.parameter.add"));
+        this.detectParameterAdd = Boolean.parseBoolean(properties.getProperty("detect.parameter.add"));
+        return this.detectParameterAdd;
     }
 
     public Boolean getDetectParameterRemove() {
         if (this.detectParameterRemove != null)
             return this.detectParameterRemove;
-        return Boolean.parseBoolean(properties.getProperty("detect.parameter.remove"));
+        this.detectParameterRemove = Boolean.parseBoolean(properties.getProperty("detect.parameter.remove"));
+        return this.detectParameterRemove;
     }
 
     public Boolean getDetectParameterChange() {
         if (this.detectParameterChange != null)
             return this.detectParameterChange;
-        return Boolean.parseBoolean(properties.getProperty("detect.parameter.change"));
+        this.detectParameterChange = Boolean.parseBoolean(properties.getProperty("detect.parameter.change"));
+        return this.detectParameterChange;
     }
 
     public void setBasePath(String basePath) {
